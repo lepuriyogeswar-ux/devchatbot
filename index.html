@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d0e12">
+  <meta name="description" content="A private, local AI assistant for questions, ideas, and code, powered by Ollama.">
+  <title>DevMate — Your local AI partner</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      background: #0d0e12;
+      color: #ececf0;
+      --panel: #131419;
+      --line: #25262e;
+      --muted: #898b98;
+      --accent: #b4f36b;
+      --accent-ink: #18200f;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; }
+    button, textarea, select { font: inherit; }
+    button { color: inherit; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 254px minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+      padding: 23px 16px 16px; border-right: 1px solid var(--line); background: #101115;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 1px 7px 28px; }
+    .brand-mark {
+      width: 37px; height: 37px; display: grid; place-items: center; border-radius: 12px;
+      color: #14190d; background: var(--accent); font-size: 19px; font-weight: 850;
+      box-shadow: 0 0 26px #b4f36b20;
+    }
+    .brand-name { font-size: 14px; font-weight: 750; letter-spacing: -.02em; }
+    .brand-sub { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .new-chat {
+      width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px;
+      padding: 11px 12px; border: 1px solid #34353e; border-radius: 10px;
+      background: #191a20; cursor: pointer; font-size: 12px; font-weight: 600;
+      transition: background .16s, border-color .16s;
+    }
+    .new-chat:hover { border-color: #55575f; background: #202127; }
+    .side-label { margin: 27px 8px 10px; color: #777985; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .side-link {
+      width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 9px;
+      border: 0; border-radius: 8px; background: transparent; color: #bfc0c8;
+      text-align: left; cursor: pointer; font-size: 12px; transition: background .15s;
+    }
+    .side-link:hover { background: #1a1b21; }
+    .side-icon { width: 18px; color: #9a9ca6; text-align: center; }
+    .sidebar-spacer { flex: 1; }
+    .local-card { padding: 13px; border: 1px solid #292a31; border-radius: 11px; background: #15161b; }
+    .local-heading { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 650; }
+    .local-dot { width: 7px; height: 7px; border-radius: 50%; background: #797b84; }
+    .local-card.online .local-dot { background: var(--accent); box-shadow: 0 0 10px #b4f36b88; }
+    .local-card.offline .local-dot { background: #ff7885; }
+    .local-caption { margin: 8px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .model-select {
+      width: 100%; padding: 9px 10px; border: 1px solid #32333b; border-radius: 8px;
+      outline: 0; color: #e6e6eb; background: #101115; font-size: 11px;
+    }
+    .model-select:focus-visible, button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .sidebar-foot { padding: 13px 4px 0; color: #666873; font-size: 10px; text-align: center; }
+    .workspace { min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: 62px; flex: 0 0 62px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 clamp(20px, 4vw, 58px); border-bottom: 1px solid #202127;
+    }
+    .crumb { color: #9698a2; font-size: 11px; }
+    .crumb strong { color: #dedee3; font-weight: 600; }
+    .privacy { display: flex; align-items: center; gap: 7px; color: #8f919b; font-size: 10px; }
+    .privacy svg { color: var(--accent); }
+    .content { width: min(100%, 900px); flex: 1; display: flex; flex-direction: column; margin: 0 auto; padding: 0 clamp(18px, 5vw, 68px); }
+    .conversation { flex: 1; padding: 40px 0 20px; }
+    .welcome { max-width: 690px; margin: clamp(30px, 8vh, 90px) auto 35px; text-align: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 7px; margin-bottom: 19px; padding: 7px 11px;
+      border: 1px solid #333a2c; border-radius: 999px; color: #c8e9a5; background: #1b2116;
+      font-size: 10px; font-weight: 650; letter-spacing: .025em;
+    }
+    .eyebrow-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    h1 { margin: 0; color: #f3f3f5; font-size: clamp(34px, 5vw, 53px); font-weight: 650; letter-spacing: -.065em; line-height: 1.1; }
+    h1 span { color: var(--accent); }
+    .welcome-copy { max-width: 485px; margin: 16px auto 0; color: #92949e; font-size: 13px; line-height: 1.8; }
+    .suggestion-label { margin: 29px 0 11px; color: #777984; font-size: 10px; font-weight: 650; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
+    .suggestions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: left; }
+    .suggestion {
+      min-height: 73px; display: flex; align-items: flex-start; gap: 11px; padding: 14px;
+      border: 1px solid #292a32; border-radius: 11px; color: #d5d5dc; background: #14151a;
+      cursor: pointer; line-height: 1.55; font-size: 11px; text-align: left;
+      transition: border-color .15s, transform .15s, background .15s;
+    }
+    .suggestion:hover { transform: translateY(-1px); border-color: #49543a; background: #191b17; }
+    .suggestion-icon { flex: 0 0 18px; color: var(--accent); font-size: 14px; }
+    .messages { display: flex; flex-direction: column; gap: 26px; }
+    .message { display: flex; align-items: flex-start; gap: 12px; animation: appear .2s ease-out; }
+    @keyframes appear { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .message.user { flex-direction: row-reverse; }
+    .avatar {
+      width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center;
+      border: 1px solid #34352d; border-radius: 10px; color: var(--accent); background: #1a1d15;
+      font-size: 12px; font-weight: 750;
+    }
+    .user .avatar { border-color: #30323b; color: #c5c7d2; background: #1a1b21; }
+    .bubble { max-width: min(88%, 700px); padding: 5px 2px 0; color: #d7d7de; line-height: 1.75; font-size: 13px; overflow-wrap: anywhere; }
+    .user .bubble { max-width: min(82%, 600px); padding: 10px 14px; border: 1px solid #30313a; border-radius: 13px 3px 13px 13px; background: #191a20; }
+    .bubble.error { color: #ffb9c0; }
+    .typing { color: #989aa4; }
+    .answer-text { white-space: pre-wrap; }
+    .code-block { overflow: hidden; margin: 12px 0 14px; border: 1px solid #30313a; border-radius: 10px; background: #111216; }
+    .code-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 11px; border-bottom: 1px solid #282930; color: #a5a6b0; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .copy-code { padding: 4px 8px; border: 1px solid #35363e; border-radius: 6px; color: #bfc0c8; background: #1a1b20; cursor: pointer; font-size: 10px; }
+    .copy-code:hover { color: var(--accent); border-color: #596148; }
+    .code-block pre { max-width: 100%; overflow: auto; margin: 0; padding: 13px; color: #d7e5c5; font: 11px/1.7 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; tab-size: 2; }
+    .code-block code { font: inherit; }
+    .composer-wrap { position: sticky; bottom: 0; padding: 18px 0 18px; background: linear-gradient(transparent, #0d0e12 14%); }
+    .composer {
+      display: flex; align-items: flex-end; gap: 11px; padding: 13px 13px 12px 16px;
+      border: 1px solid #363740; border-radius: 14px; background: #15161b;
+      box-shadow: 0 10px 34px #0005; transition: border-color .15s;
+    }
+    .composer:focus-within { border-color: #626550; }
+    textarea {
+      width: 100%; min-height: 25px; max-height: 170px; resize: none; padding: 3px 0;
+      border: 0; outline: 0; color: #ededf0; background: transparent; line-height: 1.6; font-size: 12px;
+    }
+    textarea::placeholder { color: #777985; }
+    .send {
+      width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center;
+      border: 0; border-radius: 9px; color: var(--accent-ink); background: var(--accent);
+      cursor: pointer; transition: filter .15s, opacity .15s;
+    }
+    .send:hover { filter: brightness(1.08); }
+    .send:disabled { opacity: .45; cursor: not-allowed; }
+    .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 3px 0; }
+    .composer-note { color: #6e707a; font-size: 9px; line-height: 1.5; }
+    .key-hint { color: #6e707a; font-size: 9px; white-space: nowrap; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 10px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { padding: 0; }
+      .brand-mark { width: 34px; height: 34px; }
+      .brand-sub, .side-label, .side-link, .sidebar-spacer, .sidebar-foot { display: none; }
+      .new-chat { width: auto; margin-left: auto; padding: 9px 10px; font-size: 11px; }
+      .local-card { display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; }
+      .local-heading { font-size: 0; }
+      .local-caption { display: none; }
+      .model-select { width: auto; max-width: 145px; padding: 8px; font-size: 10px; }
+      .topbar { height: 47px; flex-basis: 47px; padding: 0 18px; }
+      .content { min-height: calc(100vh - 105px); }
+      .welcome { margin-top: 5vh; }
+    }
+    @media (max-width: 500px) {
+      .brand-name { font-size: 12px; }
+      .new-chat { font-size: 0; gap: 0; }
+      .new-chat span { font-size: 17px; }
+      .model-select { max-width: 124px; }
+      .privacy { font-size: 0; }
+      .suggestions { grid-template-columns: 1fr; gap: 8px; }
+      .suggestion { min-height: 58px; }
+      .suggestion-label { margin-top: 24px; }
+      .conversation { padding-top: 22px; }
+      .welcome-copy { font-size: 12px; }
+      .bubble { max-width: calc(100% - 43px); }
+      .composer-footer { align-items: flex-start; }
+      .key-hint { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Chat controls">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">&lt;/&gt;</div>
+        <div><div class="brand-name">DevMate</div><div class="brand-sub">Your local AI partner</div></div>
+      </div>
+      <button id="new-chat" class="new-chat" type="button"><span aria-hidden="true">＋</span> New conversation</button>
+      <div class="side-label">Workspace</div>
+      <button class="side-link" id="focus-prompt" type="button"><span class="side-icon" aria-hidden="true">⌘</span> Ask any question</button>
+      <div class="side-label">Try asking</div>
+      <button class="side-link quick-prompt" type="button" data-prompt="Build a responsive portfolio website with HTML, CSS, and JavaScript. Show me the complete code."><span class="side-icon" aria-hidden="true">◈</span> Build a portfolio</button>
+      <button class="side-link quick-prompt" type="button" data-prompt="Help me debug this code. I will paste the code and the error message next."><span class="side-icon" aria-hidden="true">⌕</span> Debug my code</button>
+      <button class="side-link quick-prompt" type="button" data-prompt="Explain how to make a website responsive using CSS Grid and Flexbox, with a practical example."><span class="side-icon" aria-hidden="true">▦</span> Learn responsive CSS</button>
+      <div class="sidebar-spacer"></div>
+      <div id="local-card" class="local-card">
+        <div class="local-heading"><span class="local-dot"></span><span id="status-text">Connecting to Ollama…</span></div>
+        <p class="local-caption">Your prompts and code stay on this computer.</p>
+        <select id="model" class="model-select" aria-label="Choose a local AI model">
+          <option value="llama3.2:3b">llama3.2:3b</option>
+          <option value="qwen3:4b">qwen3:4b</option>
+        </select>
+      </div>
+      <div class="sidebar-foot">Private by design · Powered by Ollama</div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="crumb">Workspace <span aria-hidden="true">/</span> <strong>AI assistant</strong></div>
+        <div class="privacy">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5 2.75 3.4v3.8c0 3.35 2.24 5.98 5.25 7.3 3.01-1.32 5.25-3.95 5.25-7.3V3.4L8 1.5Z" stroke="currentColor" stroke-width="1.4"/><path d="m5.8 7.9 1.45 1.45L10.4 6.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Local &amp; private
+        </div>
+      </header>
+
+      <main class="content">
+        <section id="conversation" class="conversation" aria-live="polite">
+          <div id="welcome" class="welcome">
+            <div class="eyebrow"><span class="eyebrow-dot"></span> YOUR PRIVATE, LOCAL AI</div>
+            <h1>Ask anything.<br><span>Let’s work it out.</span></h1>
+            <p class="welcome-copy">Get thoughtful answers to everyday questions, complex topics, and coding challenges, powered by your local AI model.</p>
+            <div class="suggestion-label">Try asking anything</div>
+            <div class="suggestions">
+              <button class="suggestion" type="button" data-prompt="Create a clean, responsive landing page for a creative studio using HTML and CSS. Include the complete code."><span class="suggestion-icon" aria-hidden="true">✳</span><span>Build a beautiful responsive landing page</span></button>
+              <button class="suggestion" type="button" data-prompt="Explain JavaScript promises and async/await with a practical example."><span class="suggestion-icon" aria-hidden="true">⌁</span><span>Understand JavaScript async/await</span></button>
+              <button class="suggestion" type="button" data-prompt="Explain why correlation does not prove causation, using a clear everyday example."><span class="suggestion-icon" aria-hidden="true">▤</span><span>Understand a tricky idea with an example</span></button>
+              <button class="suggestion" type="button" data-prompt="Help me debug a website layout issue. Ask me for the code and browser behavior you need to diagnose it."><span class="suggestion-icon" aria-hidden="true">⌕</span><span>Track down a tricky layout bug</span></button>
+            </div>
+          </div>
+          <div id="messages" class="messages"></div>
+        </section>
+
+        <form id="chat-form" class="composer-wrap">
+          <div class="composer">
+            <textarea id="prompt" rows="1" maxlength="12000" placeholder="Ask DevMate anything…" aria-label="Your message to DevMate"></textarea>
+            <button id="send" class="send" type="submit" aria-label="Send message">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 15.5V4.5M5.5 9 10 4.5 14.5 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="composer-footer">
+            <div class="composer-note">DevMate can make mistakes. Run and review generated code before using it.</div>
+            <div class="key-hint">Enter to send · Shift + Enter for a new line</div>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const form = document.querySelector("#chat-form");
+    const input = document.querySelector("#prompt");
+    const send = document.querySelector("#send");
+    const messagesElement = document.querySelector("#messages");
+    const welcome = document.querySelector("#welcome");
+    const modelSelect = document.querySelector("#model");
+    const localCard = document.querySelector("#local-card");
+    const statusText = document.querySelector("#status-text");
+    const history = [];
+    let busy = false;
+
+    function scrollToLatest(element) {
+      element.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+
+    function addMessage(role, text, extraClass = "") {
+      const row = document.createElement("div");
+      row.className = `message ${role}`;
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = role === "user" ? "Y" : "</>";
+      const bubble = document.createElement("div");
+      bubble.className = `bubble ${extraClass}`.trim();
+      if (role === "assistant" && !extraClass) {
+        renderAnswer(bubble, text);
+      } else {
+        bubble.textContent = text;
+      }
+      row.append(avatar, bubble);
+      messagesElement.append(row);
+      scrollToLatest(row);
+      return row;
+    }
+
+    function renderAnswer(container, text) {
+      const segments = text.split(/```([^\n`]*)\n([\s\S]*?)```/g);
+      for (let index = 0; index < segments.length; index += 3) {
+        if (segments[index]) {
+          const paragraph = document.createElement("div");
+          paragraph.className = "answer-text";
+          paragraph.textContent = segments[index];
+          container.append(paragraph);
+        }
+        if (index + 2 < segments.length) {
+          const language = segments[index + 1].trim() || "code";
+          const wrapper = document.createElement("div");
+          wrapper.className = "code-block";
+          const toolbar = document.createElement("div");
+          toolbar.className = "code-toolbar";
+          const label = document.createElement("span");
+          label.textContent = language;
+          const copy = document.createElement("button");
+          copy.className = "copy-code";
+          copy.type = "button";
+          copy.textContent = "Copy";
+          const code = segments[index + 2].replace(/\n$/, "");
+          copy.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(code);
+              copy.textContent = "Copied";
+              window.setTimeout(() => { copy.textContent = "Copy"; }, 1500);
+            } catch (error) {
+              copy.textContent = "Copy unavailable";
+              window.setTimeout(() => { copy.textContent = "Copy"; }, 1800);
+            }
+          });
+          const pre = document.createElement("pre");
+          const codeElement = document.createElement("code");
+          codeElement.textContent = code;
+          pre.append(codeElement);
+          toolbar.append(label, copy);
+          wrapper.append(toolbar, pre);
+          container.append(wrapper);
+        }
+      }
+    }
+
+    function resizeInput() {
+      input.style.height = "auto";
+      input.style.height = `${Math.min(input.scrollHeight, 170)}px`;
+    }
+
+    async function checkStatus() {
+      try {
+        const response = await fetch("/api/status");
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not check Ollama.");
+        if (!result.ok) {
+          localCard.className = "local-card offline";
+          statusText.textContent = "Ollama is offline";
+          return;
+        }
+        localCard.className = "local-card online";
+        statusText.textContent = result.models.includes(modelSelect.value)
+          ? "Ollama is ready"
+          : "Selected model not installed";
+      } catch (error) {
+        localCard.className = "local-card offline";
+        statusText.textContent = "Could not check Ollama";
+      }
+    }
+
+    async function submitMessage(text) {
+      const message = text.trim();
+      if (!message || busy) return;
+      welcome.hidden = true;
+      addMessage("user", message);
+      history.push({ role: "user", content: message });
+      input.value = "";
+      resizeInput();
+      busy = true;
+      send.disabled = true;
+      const pending = addMessage("assistant", "Thinking…", "typing");
+      const pendingBubble = pending.querySelector(".bubble");
+      const waitingNotice = window.setTimeout(() => {
+        if (pending.isConnected) {
+          pendingBubble.textContent = "Waiting for your local model… Larger questions can take a little longer.";
+        }
+      }, 12000);
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelSelect.value, messages: history })
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.error || "The request failed.");
+        }
+        if (!response.body) throw new Error("Your browser cannot receive a streamed reply.");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let answer = "";
+        let streamError = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          buffer += decoder.decode(value, { stream: !done });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line);
+            if (event.type === "error") {
+              streamError = event.error || "Ollama could not complete the request.";
+              break;
+            }
+            if (event.type === "delta") {
+              answer += event.content;
+              pendingBubble.classList.remove("typing");
+              pendingBubble.textContent = answer;
+              scrollToLatest(pending);
+            }
+          }
+          if (streamError || done) break;
+        }
+        if (streamError) throw new Error(streamError);
+        if (!answer.trim()) throw new Error("Ollama completed the request without an answer. Try again or switch models.");
+        pendingBubble.classList.remove("typing");
+        pendingBubble.replaceChildren();
+        renderAnswer(pendingBubble, answer);
+        history.push({ role: "assistant", content: answer });
+        if (history.length > 38) {
+          history.splice(0, history.length - 38);
+          while (history[0] && history[0].role !== "user") history.shift();
+        }
+      } catch (error) {
+        pending.remove();
+        addMessage("assistant", error.message, "error");
+        history.pop();
+      } finally {
+        window.clearTimeout(waitingNotice);
+        busy = false;
+        send.disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      submitMessage(input.value);
+    });
+    input.addEventListener("input", resizeInput);
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+    document.querySelector("#new-chat").addEventListener("click", () => {
+      if (busy) return;
+      history.length = 0;
+      messagesElement.replaceChildren();
+      welcome.hidden = false;
+      input.focus();
+    });
+    document.querySelector("#focus-prompt").addEventListener("click", () => input.focus());
+    document.querySelectorAll("[data-prompt]").forEach(button => {
+      button.addEventListener("click", () => submitMessage(button.dataset.prompt));
+    });
+    modelSelect.addEventListener("change", checkStatus);
+    checkStatus();
+  </script>
+</body>
+</html>
